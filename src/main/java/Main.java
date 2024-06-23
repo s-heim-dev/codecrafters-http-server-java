@@ -31,6 +31,8 @@ public class Main {
         return sb.toString();
     }
 
+
+
     public static void main(String[] args) {
         ServerSocket serverSocket = null;
         Socket clientSocket = null;
@@ -44,18 +46,27 @@ public class Main {
             
             InputStream input = clientSocket.getInputStream();
             String inputString = Main.readStringFromStream(input);
-            HttpRequest request = new HttpRequest(inputString);
 
-            String message;
-            if (request.getTarget().equals("/")) {
-                message = "HTTP/1.1 200 OK\r\n\r\n";
+            HttpRequest request = new HttpRequest(inputString);
+            HttpResponse response = new HttpResponse();
+
+            String target = request.getTarget();
+
+            if (target.equals("/")) {
+                response.setStatus(HttpStatusCode.OK);
+            }
+            else if (target.startsWith("/echo")) {
+                response.setStatus(HttpStatusCode.OK);
+                
+                Echo.handle(request, response);
             }
             else {
-                message = "HTTP/1.1 404 Not Found\r\n\r\n";
+                response.setStatus(HttpStatusCode.NotFound);
             }
 
             OutputStream output = clientSocket.getOutputStream();
-            output.write(message.getBytes());
+
+            output.write(response.toString().getBytes());
         } catch (IOException e) {
             System.out.println("IOException: " + e.getMessage());
         }

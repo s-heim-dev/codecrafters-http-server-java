@@ -50,7 +50,7 @@ public class HttpResponse {
         for (String key : this.headers.keySet()) {
             sb.append(String.format("%s: %s\r\n", key, this.headers.get(key)));
         }
-        sb.append(this.body);
+        sb.append("\r\n" + this.body);
 
         return sb.toString();
     }

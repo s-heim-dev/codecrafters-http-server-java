@@ -21,7 +21,9 @@ public class Main {
             sb.append((char) c);
             lastAdded[i % 4] = c;
             i += 1;
-            if (lastAdded[0] == 13 && lastAdded[1] == 10 && lastAdded[2] == 13 && lastAdded[3] == 10) {
+
+            if ((lastAdded[0] == 13 && lastAdded[1] == 10 && lastAdded[2] == 13 && lastAdded[3] == 10) 
+                || (lastAdded[0] == 10 && lastAdded[1] == 13 && lastAdded[2] == 10 && lastAdded[3] == 13)) {
                 break;
             }
         }

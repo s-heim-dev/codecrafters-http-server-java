@@ -1,19 +1,22 @@
 import java.util.HashMap;
 
 public class HttpRequest {
-    private String method;
-    private String target;
-    private String version;
-    private HashMap<String, String> headers;
+    private String method = new String();
+    private String target = new String();
+    private String version = new String();
+    private HashMap<String, String> headers = new HashMap<>();
 
-    public HttpRequest(String request) {
-        this.headers = new HashMap<>();
-        
+    public HttpRequest(String request) {       
         String[] lines = request.split("(\r\n)");
         String[] requestLines = lines[0].split(" ");
         this.method = requestLines[0];
-        this.target = requestLines[1];
-        this.version = requestLines[2];
+
+        if (requestLines.length > 1) {
+            this.target = requestLines[1];
+            if (requestLines.length == 3) {
+                this.version = requestLines[2];
+            }
+        }
 
         for (int i = 1; i < lines.length; i++) {
             String[] line = lines[i].split("(: )");
@@ -25,7 +28,7 @@ public class HttpRequest {
         this.method = method;
         this.target = target;
         this.version = version;
-        this.headers = headers;
+        this.headers = new HashMap<>(headers);
     }
 
     public String getMethod() {

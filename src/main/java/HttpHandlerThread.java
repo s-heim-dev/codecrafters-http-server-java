@@ -1,19 +1,23 @@
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class HttpHandlerThread extends Thread {
+    String basePath;
     Socket client;
     HttpRequest request;
     HttpResponse response;
-    String target;
 
-    public HttpHandlerThread(Socket client) {
+    public HttpHandlerThread(Socket client, String basePath) {
         this.client = client;
+        this.basePath = basePath;
     }
 
     public void run() {
@@ -63,16 +67,19 @@ public class HttpHandlerThread extends Thread {
     }
 
     private void handle() {
-        this.target = this.request.getTarget();
+        String target = this.request.getTarget();
 
-        if (this.target.equals("/")) {
+        if (target.equals("/")) {
             response.setStatus(HttpStatusCode.OK);
         }
-        else if (this.target.startsWith("/echo")) {
+        else if (target.startsWith("/echo")) {
             this.handleEcho();
         }
-        else if (this.target.startsWith("/user-agent")) {
+        else if (target.startsWith("/user-agent")) {
             this.handleUserAgent();
+        }
+        else if (target.startsWith("/files")) {
+            this.handleFiles();
         }
         else {
             response.setStatus(HttpStatusCode.NotFound);
@@ -80,7 +87,7 @@ public class HttpHandlerThread extends Thread {
     }
 
     private void handleEcho() {
-        String arg = this.target.replace("/echo/", "");
+        String arg = this.request.getTarget().replace("/echo/", "");
 
         response.setBody(arg);
         response.setHeader("Content-Type", "text/plain");
@@ -94,6 +101,30 @@ public class HttpHandlerThread extends Thread {
         response.setBody(agent);
         response.setHeader("Content-Type", "text/plain");
         response.setHeader("Content-Length", String.valueOf(agent.length()));
+        response.setStatus(HttpStatusCode.OK);
+    }
+
+    private void handleFiles() {
+        String path = this.basePath + this.request.getTarget().replace("/files/", "");
+        File file = new File(path);
+
+        if (!file.exists() || !file.isFile()) {
+            response.setStatus(HttpStatusCode.NotFound);
+            return;
+        }
+
+        String content;
+        try {
+            content = Files.readString(Path.of(path));
+        }
+        catch(IOException ex) {
+            response.setStatus(HttpStatusCode.InternalServerError);
+            return;
+        }
+
+        response.setBody(content);
+        response.setHeader("Content-Type", "application/octet-stream");
+        response.setHeader("Content-Length", String.valueOf(file.length()));
         response.setStatus(HttpStatusCode.OK);
     }
 }

@@ -1,5 +1,7 @@
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -21,21 +23,13 @@ public class HttpHandlerThread extends Thread {
     }
 
     public void run() {
-        String inputString;
         try {
             InputStream input = this.client.getInputStream();
-            inputString = this.readStringFromStream(input);
-        }
-        catch (IOException ex) {
-            return;
-        }
+            this.request = this.readHttpRequestFromString(input);
+            this.response = new HttpResponse();
 
-        this.request = new HttpRequest(inputString);
-        this.response = new HttpResponse();
+            this.handle();
 
-        this.handle();
-
-        try {
             OutputStream output = this.client.getOutputStream();
             output.write(response.toString().getBytes());
         }
@@ -44,7 +38,7 @@ public class HttpHandlerThread extends Thread {
         }
     }
 
-    private String readStringFromStream(InputStream inputStream) throws IOException {
+    private HttpRequest readHttpRequestFromString(InputStream inputStream) throws IOException {
         InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
         StringBuilder sb = new StringBuilder();
         Reader reader = new BufferedReader(inputStreamReader);
@@ -63,23 +57,63 @@ public class HttpHandlerThread extends Thread {
             }
         }
 
-        return sb.toString();
+        HttpRequest request = new HttpRequest(sb.toString());
+        int bodyLength = 0;
+        if (request.getMethod().equals("POST") && request.hasHeader("Content-Length")) {
+            bodyLength = Integer.valueOf(request.getHeader("Content-Length"));
+        }
+
+        sb = new StringBuilder();
+        while(bodyLength > 0) {
+            c = reader.read();
+            sb.append((char) c);
+            bodyLength--;
+        }
+
+        request.setBody(sb.toString());
+
+        return request;
     }
 
     private void handle() {
         String target = this.request.getTarget();
+        String method = this.request.getMethod();
 
         if (target.equals("/")) {
-            response.setStatus(HttpStatusCode.OK);
+            if (method.equals("GET")) {
+                response.setStatus(HttpStatusCode.OK);
+            }
+            else {
+                response.setStatus(HttpStatusCode.MethodNotAllowed);
+            }
         }
         else if (target.startsWith("/echo")) {
-            this.handleEcho();
+            if (method.equals("GET")) {
+                this.handleEcho();
+            }
+            else {
+                response.setStatus(HttpStatusCode.MethodNotAllowed);
+            }
         }
         else if (target.startsWith("/user-agent")) {
-            this.handleUserAgent();
+            if (method.equals("GET")) {
+                this.handleUserAgent();
+            }
+            else {
+                response.setStatus(HttpStatusCode.MethodNotAllowed);
+            }
         }
         else if (target.startsWith("/files")) {
-            this.handleFiles();
+            if (method.equals("GET")) {
+                this.handleGetFiles();
+            }
+            else if (method.equals("POST")) {
+
+                this.handlePostFiles();
+            }
+            else {
+                response.setStatus(HttpStatusCode.MethodNotAllowed);
+            }
         }
         else {
             response.setStatus(HttpStatusCode.NotFound);
@@ -104,7 +138,7 @@ public class HttpHandlerThread extends Thread {
         response.setStatus(HttpStatusCode.OK);
     }
 
-    private void handleFiles() {
+    private void handleGetFiles() {
         String path = this.basePath + this.request.getTarget().replace("/files/", "");
         File file = new File(path);
 
@@ -126,5 +160,26 @@ public class HttpHandlerThread extends Thread {
         response.setHeader("Content-Type", "application/octet-stream");
         response.setHeader("Content-Length", String.valueOf(file.length()));
         response.setStatus(HttpStatusCode.OK);
+    }
+
+    private void handlePostFiles() {
+        String path = this.basePath + this.request.getTarget().replace("/files/", "");
+        String content = this.request.getBody();
+
+        File file = new File(path);
+
+        try {
+            file.createNewFile();
+            FileWriter fileWriter = new FileWriter(path);
+            BufferedWriter writer = new BufferedWriter(fileWriter);
+
+            writer.write(content);
+            writer.close();
+            response.setStatus(HttpStatusCode.Created);
+        }
+        catch (IOException ex) {
+            response.setStatus(HttpStatusCode.InternalServerError);
+        }
+
     }
 }

@@ -4,11 +4,13 @@ public class HttpRequest {
     private String method = new String();
     private String target = new String();
     private String version = new String();
+    private String body = new String();
     private HashMap<String, String> headers = new HashMap<>();
 
     public HttpRequest(String request) {       
         String[] lines = request.split("(\r\n)");
         String[] requestLines = lines[0].split(" ");
+        boolean hasBody = !request.endsWith("\r\n\r\n");
         this.method = requestLines[0];
 
         if (requestLines.length > 1) {
@@ -18,9 +20,13 @@ public class HttpRequest {
             }
         }
 
-        for (int i = 1; i < lines.length; i++) {
+        for (int i = 1; (hasBody && i < lines.length - 1) || (i < lines.length); i++) {
             String[] line = lines[i].split("(: )");
             this.headers.put(line[0], line[1]);
+        }
+
+        if (hasBody) {
+            this.body = lines[lines.length - 1];
         }
     }
 
@@ -43,8 +49,20 @@ public class HttpRequest {
         return this.version;
     }
 
+    public String getBody() {
+        return this.body;
+    }
+
     public String getHeader(String key) {
         return this.headers.get(key);
+    }
+
+    public boolean hasHeader(String key) {
+        return this.headers.containsKey(key);
+    }
+
+    public void setBody(String body) {
+        this.body = body;
     }
 
     public String toString() {

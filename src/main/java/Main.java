@@ -50,22 +50,10 @@ public class Main {
             HttpRequest request = new HttpRequest(inputString);
             HttpResponse response = new HttpResponse();
 
-            String target = request.getTarget();
-
-            if (target.equals("/")) {
-                response.setStatus(HttpStatusCode.OK);
-            }
-            else if (target.startsWith("/echo")) {
-                response.setStatus(HttpStatusCode.OK);
-                
-                Echo.handle(request, response);
-            }
-            else {
-                response.setStatus(HttpStatusCode.NotFound);
-            }
+            HttpHandler handler = new HttpHandler(request, response);
+            handler.handle();
 
             OutputStream output = clientSocket.getOutputStream();
-
             output.write(response.toString().getBytes());
         } catch (IOException e) {
             System.out.println("IOException: " + e.getMessage());

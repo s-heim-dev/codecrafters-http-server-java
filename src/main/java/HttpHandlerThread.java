@@ -122,6 +122,11 @@ public class HttpHandlerThread extends Thread {
 
     private void handleEcho() {
         String arg = this.request.getTarget().replace("/echo/", "");
+        String encoding = this.request.getHeader("Accept-Encoding");
+
+        if (encoding != null && encoding.equals("gzip")) {
+            response.setHeader("Content-Encoding", encoding);
+        }
 
         response.setBody(arg);
         response.setHeader("Content-Type", "text/plain");

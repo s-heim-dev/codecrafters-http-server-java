@@ -1,11 +1,13 @@
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.net.Socket;
 import java.nio.file.Files;
@@ -13,6 +15,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.zip.GZIPOutputStream;
 
 public class HttpHandlerThread extends Thread {
     String basePath;
@@ -35,6 +38,11 @@ public class HttpHandlerThread extends Thread {
 
             OutputStream output = this.client.getOutputStream();
             output.write(response.toString().getBytes());
+
+            if (this.response.hasBody()) {
+                output.write(this.response.getBody());
+            }  
+            output.close();
         }
         catch (IOException ex) {
             return;
@@ -76,6 +84,16 @@ public class HttpHandlerThread extends Thread {
         request.setBody(sb.toString());
 
         return request;
+    }
+
+    private byte[] compress(String input) throws IOException {
+        ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+        GZIPOutputStream gzipStream = new GZIPOutputStream(byteStream);
+        OutputStreamWriter output = new OutputStreamWriter(gzipStream);
+        output.write(input);
+        output.close();
+
+        return byteStream.toByteArray();
     }
 
     private void handle() {
@@ -124,28 +142,38 @@ public class HttpHandlerThread extends Thread {
     }
 
     private void handleEcho() {
-        String arg = this.request.getTarget().replace("/echo/", "");
+        String body = this.request.getTarget().replace("/echo/", "");
         String encodings = this.request.getHeader("Accept-Encoding");
 
         if (encodings != null) {
             List<String> encodingsAsList = new ArrayList<>(Arrays.asList(encodings.split(", ")));
             if (encodingsAsList.contains("gzip")) {
+                try {
+                    response.setBody(this.compress(body));
+                    response.setHeader("Content-Length", response.getContentLength());
+                }
+                catch (IOException ex) {
+                    response.setStatus(HttpStatusCode.InternalServerError);
+                    return;
+                }
                 response.setHeader("Content-Encoding", "gzip");
             }
         }
+        else {
+            response.setBody(body.getBytes());
+            response.setHeader("Content-Length", response.getContentLength());
+        }
 
-        response.setBody(arg);
         response.setHeader("Content-Type", "text/plain");
-        response.setHeader("Content-Length", String.valueOf(arg.length()));
         response.setStatus(HttpStatusCode.OK);
     }
 
     private void handleUserAgent() {
         String agent = this.request.getHeader("User-Agent");
 
-        response.setBody(agent);
+        response.setBody(agent.getBytes());
         response.setHeader("Content-Type", "text/plain");
-        response.setHeader("Content-Length", String.valueOf(agent.length()));
+        response.setHeader("Content-Length", response.getContentLength());
         response.setStatus(HttpStatusCode.OK);
     }
 
@@ -167,9 +195,9 @@ public class HttpHandlerThread extends Thread {
             return;
         }
 
-        response.setBody(content);
+        response.setBody(content.getBytes());
         response.setHeader("Content-Type", "application/octet-stream");
-        response.setHeader("Content-Length", String.valueOf(file.length()));
+        response.setHeader("Content-Length", response.getContentLength());
         response.setStatus(HttpStatusCode.OK);
     }
 

@@ -1,7 +1,7 @@
 import java.util.HashMap;
 
 public class HttpResponse {
-    private String body;
+    private byte[] body;
     private String version;
     private HttpStatusCode code;
     private HashMap<String, String> headers;
@@ -10,14 +10,12 @@ public class HttpResponse {
         this.version = version;
         this.code = code;
         this.headers = new HashMap<>();
-        this.body = new String();
     }
 
     public HttpResponse(String version, HttpStatusCode code, HashMap<String, String> headers) {
         this.version = version;
         this.code = code;
         this.headers = new HashMap<>(headers);
-        this.body = new String();
     }
 
     public HttpResponse(HttpStatusCode code, HashMap<String, String> headers) {
@@ -36,12 +34,27 @@ public class HttpResponse {
         this.code = code;
     }
 
-    public void setBody(String body) {
+    public void setBody(byte[] body) {
         this.body = body;
     }
 
     public void setHeader(String key, String value) {
         this.headers.put(key, value);
+    }
+
+    public boolean hasBody() {
+        return this.body != null && this.body.length > 0;
+    }
+
+    public byte[] getBody() {
+        return this.body;
+    }
+
+    public String getContentLength() {
+        if (this.hasBody()) {
+            return String.valueOf(this.body.length);
+        }
+        return null;
     }
 
     public String toString() {
@@ -50,7 +63,7 @@ public class HttpResponse {
         for (String key : this.headers.keySet()) {
             sb.append(String.format("%s: %s\r\n", key, this.headers.get(key)));
         }
-        sb.append("\r\n" + this.body);
+        sb.append("\r\n");
 
         return sb.toString();
     }

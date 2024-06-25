@@ -116,7 +116,7 @@ public class HttpHandlerThread extends Thread {
                 response.setStatus(HttpStatusCode.MethodNotAllowed);
             }
         }
-        else if (target.startsWith("/user-agent")) {
+        else if (target.equals("/user-agent")) {
             if (method.equals("GET")) {
                 this.handleUserAgent();
             }

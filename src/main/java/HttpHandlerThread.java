@@ -10,6 +10,9 @@ import java.io.Reader;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class HttpHandlerThread extends Thread {
     String basePath;
@@ -122,10 +125,13 @@ public class HttpHandlerThread extends Thread {
 
     private void handleEcho() {
         String arg = this.request.getTarget().replace("/echo/", "");
-        String encoding = this.request.getHeader("Accept-Encoding");
+        String encodings = this.request.getHeader("Accept-Encoding");
 
-        if (encoding != null && encoding.equals("gzip")) {
-            response.setHeader("Content-Encoding", encoding);
+        if (encodings != null) {
+            List<String> encodingsAsList = new ArrayList<>(Arrays.asList(encodings.split(", ")));
+            if (encodingsAsList.contains("gzip")) {
+                response.setHeader("Content-Encoding", "gzip");
+            }
         }
 
         response.setBody(arg);
